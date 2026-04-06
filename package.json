@@ -1,0 +1,46 @@
+{
+  "name": "tesco-grocery-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for Tesco grocery shopping — search products, manage your basket, and book delivery slots",
+  "license": "MIT",
+  "author": "Gavin Attard",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GavinAttard/tesco-grocery-mcp.git"
+  },
+  "homepage": "https://github.com/GavinAttard/tesco-grocery-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/GavinAttard/tesco-grocery-mcp/issues"
+  },
+  "keywords": [
+    "mcp",
+    "tesco",
+    "grocery",
+    "shopping",
+    "model-context-protocol",
+    "ai",
+    "claude"
+  ],
+  "files": ["dist/src/", "README.md", "LICENSE", ".env.example"],
+  "type": "module",
+  "bin": {
+    "tesco-grocery": "./dist/src/index.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/src/index.js",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "@types/node": "^22.0.0"
+  }
+}
