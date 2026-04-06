@@ -108,7 +108,7 @@ The server requires a bearer token from an active Tesco.com session:
 
 1. Log in to [tesco.com/groceries](https://www.tesco.com/groceries/) in your browser
 2. Open DevTools (F12) → Network tab
-3. Find any request to `xapi.tesco.com` and copy the `Authorization` header value and `x-customer-uuid` header value
+3. Find any request to `xapi.tesco.com` and copy the `Authorization` header value and `x-customer-uuid` header value OR copy values from the oAUTH.ACCESSTOKEN and UUID cookies
 4. Use the `set_auth_token` tool to provide these credentials
 
 Credentials are persisted locally so you only need to do this when your session expires.
