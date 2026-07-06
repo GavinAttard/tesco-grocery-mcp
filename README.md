@@ -104,16 +104,35 @@ tesco-grocery
 
 ## Authentication
 
-The server requires a bearer token from an active Tesco.com session:
+The server needs a bearer token from an active Tesco.com session. Tesco runs bot
+protection on its login page, so the login itself must be done by a human in a real
+browser — but everything else, including grabbing the token, is automated.
+
+### Recommended: `npm run login` (no DevTools)
+
+```bash
+npm run login
+```
+
+This opens a real browser window at Tesco groceries. Log in normally — once you land
+on the groceries page, the helper captures the bearer token and customer UUID straight
+from Tesco's own API requests and saves them to the MCP config. The browser profile is
+persisted, so on later runs you'll usually already be logged in and it finishes in a
+second. Re-run it whenever your session expires.
+
+> Requires the Playwright browser: `npx playwright install chromium` (one-time).
+
+### Manual alternative
+
+If you'd rather not run the browser helper:
 
 1. Log in to [tesco.com/groceries](https://www.tesco.com/groceries/) in your browser
 2. Open DevTools (F12) → Network tab
 3. Find any request to `xapi.tesco.com` and copy the `Authorization` header value and `x-customer-uuid` header value OR copy values from the oAUTH.ACCESSTOKEN and UUID cookies
 4. Use the `set_auth_token` tool to provide these credentials
 
-Credentials are persisted locally so you only need to do this when your session expires.
-
-See [`.env.example`](.env.example) for the credential format.
+Credentials are persisted locally either way, so you only need to re-auth when your
+session expires. See [`.env.example`](.env.example) for the credential format.
 
 ## Shopping Skill
 

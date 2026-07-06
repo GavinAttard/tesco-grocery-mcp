@@ -136,10 +136,18 @@ export function checkTokenExpiry(): { valid: boolean; expiresAt?: string } {
  * Call at the top of any tool that requires authentication.
  */
 export function requireAuth(): void {
+  // The token lives ~60 min. A `npm run login` refresh rewrites the .env from a
+  // separate process, so if our in-memory token is missing/expired, re-read the
+  // file first — that lets a long-running server (e.g. Claude Desktop) pick up a
+  // refreshed token without a restart.
+  if (!bearerToken || !customerUuid || !checkTokenExpiry().valid) {
+    loadCredentialsFromEnv();
+  }
+
   if (!bearerToken || !customerUuid) {
     throw new TescoError(
       "TOKEN_EXPIRED",
-      "No authentication credentials. Use set_auth_token to provide a bearer token and customer UUID.",
+      "No authentication credentials. Run `npm run login` (or use set_auth_token) to provide a bearer token and customer UUID.",
     );
   }
 
@@ -147,7 +155,7 @@ export function requireAuth(): void {
   if (!expiry.valid) {
     throw new TescoError(
       "TOKEN_EXPIRED",
-      `Bearer token expired${expiry.expiresAt ? ` at ${expiry.expiresAt}` : ""}. Use set_auth_token to provide a fresh token.`,
+      `Bearer token expired${expiry.expiresAt ? ` at ${expiry.expiresAt}` : ""}. Run \`npm run login\` to refresh (your saved session means no re-login).`,
     );
   }
 }
@@ -191,6 +199,9 @@ export async function sendOperations(
   if (options?.authenticated !== false && bearerToken) {
     headers["authorization"] = bearerToken;
     if (customerUuid) {
+      // Tesco's web client sends the customer id as x-customer-uuid. Send both
+      // header names so we match whichever the API validates against.
+      headers["x-customer-uuid"] = customerUuid;
       headers["customer-uuid"] = customerUuid;
     }
   }
