@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { sendOperation, sendOperations, requireAuth, getOrderId, setOrderId, extractOrderId } from "../client.js";
+import { sendOperation, sendOperations, ensureAuth, getOrderId, setOrderId, extractOrderId } from "../client.js";
 import { buildOperation } from "../queries.js";
 import { flattenBasket, flattenBasketUpdate } from "../transform.js";
 import { TescoError, toolErrorResponse } from "../types.js";
@@ -14,7 +14,7 @@ export function registerBasketTools(server: McpServer): void {
     {},
     async () => {
       try {
-        requireAuth();
+        await ensureAuth();
 
         const op = buildOperation("GetBasket", {}, "mfe-basket");
         const response = await sendOperation(op);
@@ -52,7 +52,7 @@ export function registerBasketTools(server: McpServer): void {
     },
     async (args) => {
       try {
-        requireAuth();
+        await ensureAuth();
 
         let orderId = getOrderId();
 
@@ -111,7 +111,7 @@ export function registerBasketTools(server: McpServer): void {
     },
     async (args) => {
       try {
-        requireAuth();
+        await ensureAuth();
 
         let orderId = getOrderId();
 

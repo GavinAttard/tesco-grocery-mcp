@@ -22,14 +22,14 @@
     "claude"
   ],
   "files": [
-    "dist/src/",
+    "dist/",
     "README.md",
     "LICENSE",
     ".env.example"
   ],
   "type": "module",
   "bin": {
-    "tesco-grocery": "./dist/src/index.js"
+    "tesco-grocery": "./dist/index.js"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -37,12 +37,15 @@
   "scripts": {
     "build": "tsc",
     "login": "tsx scripts/login.ts",
-    "start": "node dist/src/index.js",
+    "start": "node dist/index.js",
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "zod": "^3.25.0"
+  },
+  "optionalDependencies": {
+    "playwright": "^1.61.1"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

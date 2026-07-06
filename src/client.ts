@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, chmodSync } from "n
 import { join, dirname } from "node:path";
 import { homedir } from "node:os";
 import { TescoError, type GraphQLOperation, type GraphQLResponse } from "./types.js";
+import { captureCredentialsViaBrowser } from "./browser-login.js";
 
 // ─── Config Directory Resolution ────────────────────────────────────────────
 
@@ -131,31 +132,60 @@ export function checkTokenExpiry(): { valid: boolean; expiresAt?: string } {
   }
 }
 
-/**
- * Throw TOKEN_EXPIRED if auth is missing or expired.
- * Call at the top of any tool that requires authentication.
- */
-export function requireAuth(): void {
-  // The token lives ~60 min. A `npm run login` refresh rewrites the .env from a
-  // separate process, so if our in-memory token is missing/expired, re-read the
-  // file first — that lets a long-running server (e.g. Claude Desktop) pick up a
-  // refreshed token without a restart.
-  if (!bearerToken || !customerUuid || !checkTokenExpiry().valid) {
-    loadCredentialsFromEnv();
-  }
+function hasValidToken(): boolean {
+  return Boolean(bearerToken && customerUuid) && checkTokenExpiry().valid;
+}
 
-  if (!bearerToken || !customerUuid) {
+// Shared so concurrent tool calls trigger only one browser login, not several.
+let loginInFlight: Promise<void> | null = null;
+
+/**
+ * Ensure a valid token exists before an authenticated call, acquiring one if not.
+ *
+ * 1. Fast path when the in-memory token is still valid.
+ * 2. Otherwise re-read .env — picks up a token refreshed by another process
+ *    (the `login` tool or `npm run login`) without needing a restart.
+ * 3. Otherwise, unless disabled via TESCO_AUTO_LOGIN=0, open a browser so the
+ *    user can log in, capture a fresh token, and continue. This is what makes
+ *    auth "just happen": any action prompts a login only when one is needed.
+ *
+ * The token lives ~60 min; step 3 is what refreshes it on demand.
+ */
+export async function ensureAuth(): Promise<void> {
+  if (hasValidToken()) return;
+
+  loadCredentialsFromEnv();
+  if (hasValidToken()) return;
+
+  if (process.env.TESCO_AUTO_LOGIN === "0") {
     throw new TescoError(
       "TOKEN_EXPIRED",
-      "No authentication credentials. Run `npm run login` (or use set_auth_token) to provide a bearer token and customer UUID.",
+      "No valid credentials. Use the `login` tool (or run `npm run login`) to sign in.",
     );
   }
 
-  const expiry = checkTokenExpiry();
-  if (!expiry.valid) {
+  if (!loginInFlight) {
+    loginInFlight = (async () => {
+      const { token, uuid } = await captureCredentialsViaBrowser();
+      setCredentials(token, uuid);
+    })().finally(() => {
+      loginInFlight = null;
+    });
+  }
+
+  try {
+    await loginInFlight;
+  } catch (e) {
     throw new TescoError(
       "TOKEN_EXPIRED",
-      `Bearer token expired${expiry.expiresAt ? ` at ${expiry.expiresAt}` : ""}. Run \`npm run login\` to refresh (your saved session means no re-login).`,
+      `Automatic sign-in didn't complete: ${e instanceof Error ? e.message : String(e)}. Use the \`login\` tool or run \`npm run login\`.`,
+    );
+  }
+
+  if (!hasValidToken()) {
+    throw new TescoError(
+      "TOKEN_EXPIRED",
+      "Sign-in finished but no valid token was captured. Please try the `login` tool again.",
     );
   }
 }
