@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, chmodSync } from "n
 import { join, dirname } from "node:path";
 import { homedir } from "node:os";
 import { TescoError, type GraphQLOperation, type GraphQLResponse } from "./types.js";
+import { captureCredentialsViaBrowser } from "./browser-login.js";
 
 // ─── Config Directory Resolution ────────────────────────────────────────────
 
@@ -131,23 +132,60 @@ export function checkTokenExpiry(): { valid: boolean; expiresAt?: string } {
   }
 }
 
+function hasValidToken(): boolean {
+  return Boolean(bearerToken && customerUuid) && checkTokenExpiry().valid;
+}
+
+// Shared so concurrent tool calls trigger only one browser login, not several.
+let loginInFlight: Promise<void> | null = null;
+
 /**
- * Throw TOKEN_EXPIRED if auth is missing or expired.
- * Call at the top of any tool that requires authentication.
+ * Ensure a valid token exists before an authenticated call, acquiring one if not.
+ *
+ * 1. Fast path when the in-memory token is still valid.
+ * 2. Otherwise re-read .env — picks up a token refreshed by another process
+ *    (the `login` tool or `npm run login`) without needing a restart.
+ * 3. Otherwise, unless disabled via TESCO_AUTO_LOGIN=0, open a browser so the
+ *    user can log in, capture a fresh token, and continue. This is what makes
+ *    auth "just happen": any action prompts a login only when one is needed.
+ *
+ * The token lives ~60 min; step 3 is what refreshes it on demand.
  */
-export function requireAuth(): void {
-  if (!bearerToken || !customerUuid) {
+export async function ensureAuth(): Promise<void> {
+  if (hasValidToken()) return;
+
+  loadCredentialsFromEnv();
+  if (hasValidToken()) return;
+
+  if (process.env.TESCO_AUTO_LOGIN === "0") {
     throw new TescoError(
       "TOKEN_EXPIRED",
-      "No authentication credentials. Use set_auth_token to provide a bearer token and customer UUID.",
+      "No valid credentials. Use the `login` tool (or run `npm run login`) to sign in.",
     );
   }
 
-  const expiry = checkTokenExpiry();
-  if (!expiry.valid) {
+  if (!loginInFlight) {
+    loginInFlight = (async () => {
+      const { token, uuid } = await captureCredentialsViaBrowser();
+      setCredentials(token, uuid);
+    })().finally(() => {
+      loginInFlight = null;
+    });
+  }
+
+  try {
+    await loginInFlight;
+  } catch (e) {
     throw new TescoError(
       "TOKEN_EXPIRED",
-      `Bearer token expired${expiry.expiresAt ? ` at ${expiry.expiresAt}` : ""}. Use set_auth_token to provide a fresh token.`,
+      `Automatic sign-in didn't complete: ${e instanceof Error ? e.message : String(e)}. Use the \`login\` tool or run \`npm run login\`.`,
+    );
+  }
+
+  if (!hasValidToken()) {
+    throw new TescoError(
+      "TOKEN_EXPIRED",
+      "Sign-in finished but no valid token was captured. Please try the `login` tool again.",
     );
   }
 }
@@ -191,6 +229,9 @@ export async function sendOperations(
   if (options?.authenticated !== false && bearerToken) {
     headers["authorization"] = bearerToken;
     if (customerUuid) {
+      // Tesco's web client sends the customer id as x-customer-uuid. Send both
+      // header names so we match whichever the API validates against.
+      headers["x-customer-uuid"] = customerUuid;
       headers["customer-uuid"] = customerUuid;
     }
   }

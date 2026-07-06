@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { sendOperation, requireAuth } from "../client.js";
+import { sendOperation, ensureAuth } from "../client.js";
 import { buildOperation } from "../queries.js";
 import { flattenCategories, flattenOrder, flattenProducts } from "../transform.js";
 import { cache, TAXONOMY_TTL, FAVOURITES_TTL, ORDERS_TTL } from "../cache.js";
@@ -74,7 +74,7 @@ export function registerBrowseTools(server: McpServer): void {
     },
     async (args) => {
       try {
-        requireAuth();
+        await ensureAuth();
 
         let products = cache.get<Array<Record<string, unknown>>>("favourites");
 
@@ -113,7 +113,7 @@ export function registerBrowseTools(server: McpServer): void {
     {},
     async () => {
       try {
-        requireAuth();
+        await ensureAuth();
 
         let orders = cache.get<Order[]>("orders");
 

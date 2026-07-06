@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { sendOperation, sendOperations, requireAuth, setOrderId, extractOrderId } from "../client.js";
+import { sendOperation, sendOperations, ensureAuth, setOrderId, extractOrderId } from "../client.js";
 import { buildOperation } from "../queries.js";
 import {
   flattenDeliverySlots,
@@ -46,7 +46,7 @@ export function registerSlotTools(server: McpServer): void {
     },
     async (args) => {
       try {
-        requireAuth();
+        await ensureAuth();
 
         const start = args.start || todayISO();
         const end = args.end || addDays(start, 7);
@@ -85,7 +85,7 @@ export function registerSlotTools(server: McpServer): void {
     {},
     async () => {
       try {
-        requireAuth();
+        await ensureAuth();
 
         let weeks = cache.get<AvailableWeek[]>("weeks");
 
@@ -126,7 +126,7 @@ export function registerSlotTools(server: McpServer): void {
     {},
     async () => {
       try {
-        requireAuth();
+        await ensureAuth();
 
         const op = buildOperation("GetBasket", {}, "mfe-basket");
         const response = await sendOperation(op);
@@ -161,7 +161,7 @@ export function registerSlotTools(server: McpServer): void {
     },
     async (args) => {
       try {
-        requireAuth();
+        await ensureAuth();
 
         const action = args.action ?? "BOOK";
 

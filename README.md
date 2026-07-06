@@ -8,7 +8,8 @@ An [MCP](https://modelcontextprotocol.io) server that wraps Tesco's grocery APIs
 
 | Tool | Description |
 |------|-------------|
-| `set_auth_token` | Set bearer token and customer UUID from your browser session |
+| `login` | Open a browser to log in to Tesco and auto-capture credentials (no DevTools). Also runs automatically when a token is missing or expired. |
+| `set_auth_token` | Manually set bearer token and customer UUID (advanced/fallback) |
 
 ### Search & Browse
 
@@ -104,16 +105,52 @@ tesco-grocery
 
 ## Authentication
 
-The server requires a bearer token from an active Tesco.com session:
+The server needs a bearer token from an active Tesco.com session. Tesco runs bot
+protection on its login page, so the login itself must be done by a human in a real
+browser — but everything else, including grabbing the token, is automated. There's
+nothing to copy and no DevTools.
+
+### It just prompts you when needed
+
+You don't have to do anything up front. The first time an action needs
+authentication (or when your token expires ~60 minutes after issue), the server
+**automatically opens a browser window** at Tesco. Log in normally; as soon as you're
+on the groceries page it captures the bearer token and customer UUID straight from
+Tesco's own API requests, saves them, and continues with what you asked for.
+
+- **Default browser:** the window opens in your default browser when that's a
+  Chromium-family browser Playwright can instrument (Google Chrome or Microsoft Edge);
+  otherwise it falls back to bundled Chromium. Safari and Firefox can't be used for
+  capture. Force a choice with `TESCO_BROWSER_CHANNEL=chrome|msedge|chromium`.
+- **Persisted session:** the browser profile is saved, so repeat logins usually need
+  no re-typing — the window opens already signed in and closes in a second.
+- **Explicit `login` tool:** you can also just ask to "log in to Tesco" to trigger it
+  on demand.
+- **Disable auto-login:** set `TESCO_AUTO_LOGIN=0` (e.g. for headless/CI) to get a
+  `TOKEN_EXPIRED` error instead of a browser window.
+
+> Requires a browser. Chrome/Edge are used if present; otherwise install the bundled
+> one once with `npx playwright install chromium`.
+
+### From a source checkout
+
+If you're running from a clone, you can also trigger the same login from the terminal:
+
+```bash
+npm run login
+```
+
+### Manual fallback
+
+If you'd rather set credentials by hand:
 
 1. Log in to [tesco.com/groceries](https://www.tesco.com/groceries/) in your browser
 2. Open DevTools (F12) → Network tab
 3. Find any request to `xapi.tesco.com` and copy the `Authorization` header value and `x-customer-uuid` header value OR copy values from the oAUTH.ACCESSTOKEN and UUID cookies
 4. Use the `set_auth_token` tool to provide these credentials
 
-Credentials are persisted locally so you only need to do this when your session expires.
-
-See [`.env.example`](.env.example) for the credential format.
+Credentials are persisted locally, so you only need to re-auth when your session
+expires. See [`.env.example`](.env.example) for the credential format.
 
 ## Shopping Skill
 
