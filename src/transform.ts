@@ -290,11 +290,18 @@ export function flattenOrder(raw: Record<string, unknown>): Order {
   }
 
   const rawItems = (raw.items ?? []) as Array<Record<string, unknown>>;
-  const items: OrderItem[] = rawItems.map((item) => ({
-    id: safeStr(item.id),
-    quantity: safeNum(item.quantity),
-    cost: safeNum(item.cost),
-  }));
+  const items: OrderItem[] = rawItems.map((item) => {
+    const product = item.product as Record<string, unknown> | undefined;
+    return {
+      id: safeStr(product?.id ?? item.id),
+      lineId: safeStr(item.id),
+      tpnb: safeStr(product?.tpnb),
+      title: safeStr(product?.title),
+      brand: safeStr(product?.brandName),
+      quantity: safeNum(item.quantity),
+      cost: safeNum(item.cost),
+    };
+  });
 
   return {
     id: safeStr(raw.id),

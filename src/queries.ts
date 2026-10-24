@@ -1204,7 +1204,7 @@ const handWrittenQueries: Record<string, string> = {
     orderId
     locationUuid
     slot { id start end charge status __typename }
-    items { id quantity unit weight cost __typename }
+    items { id quantity unit weight cost product { id tpnb title brandName __typename } __typename }
     __typename
   } }`,
 };

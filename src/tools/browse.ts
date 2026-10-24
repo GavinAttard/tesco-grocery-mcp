@@ -109,7 +109,7 @@ export function registerBrowseTools(server: McpServer): void {
 
   server.tool(
     "get_order_history",
-    "Get previous orders.",
+    "Get previous orders. Each item includes the product title, brand and product id (usable with add_to_basket).",
     {},
     async () => {
       try {

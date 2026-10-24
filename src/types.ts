@@ -139,7 +139,13 @@ export interface OrderSlot {
 }
 
 export interface OrderItem {
+  /** Product ID (tpnc), usable with add_to_basket. Falls back to lineId if the product is missing. */
   id: string;
+  /** Opaque order line ID */
+  lineId: string;
+  tpnb: string;
+  title: string;
+  brand: string;
   quantity: number;
   cost: number;
 }
